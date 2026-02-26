@@ -212,7 +212,6 @@ shifted_letter(uint32_t code) {
     return (uint8_t) ((code >> 16) & 0xff);
 }
 
-// this function is never used because we never need to actually decode the morse but O well :)
 static uint8_t
 bits_in_encoded_morse(uint32_t code) {
     return (uint8_t) ((code >> 8) & 0xff);
