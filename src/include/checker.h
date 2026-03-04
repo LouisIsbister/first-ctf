@@ -1,10 +1,18 @@
 
-#ifndef INTERPRETER_H
-#define INTERPRETER_H
+#ifndef CHECKER_H
+#define CHECKER_H
 
 #include <stdint.h>
+#include <time.h>
 
 #define DEV_MODE        0
+
+#if DEV_MODE
+    #define DEBUGGER_DETECTED printf("Debugger detected!\nExiting...\n");
+#else
+    #define DEBUGGER_DETECTED
+#endif
+
 
 #define BIT1            1
 #define BIT2            1 << 1
@@ -23,4 +31,16 @@
         | (morse_repr))
 
 
-#endif // INTERPRETER_H
+#define MAX_EXEC_TIME_SECONDS 1
+
+#define VERIFY_TIME(start)                                                  \
+    do {                                                                    \
+        if (time(NULL) - (start) >= MAX_EXEC_TIME_SECONDS) {                \
+            DEBUGGER_DETECTED                                               \
+            exit(1);                                                        \
+        }                                                                   \
+    } while(0)
+
+
+
+#endif // CHECKER_H

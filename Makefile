@@ -1,10 +1,10 @@
 CC = gcc
 
-CFLAGS = -Wall -pedantic # -g 
+CFLAGS = -g -Wall -pedantic 
 
 TARGET = challenge
 
-SRCS = src/interpreter.c
+SRCS = src/checker.c
 
 $(TARGET): 
 	$(CC) $(CFLAGS) -o $(TARGET) $(SRCS)

@@ -5,9 +5,9 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <unistd.h>
-#include <math.h>
+#include <time.h>
 
-#include "./include/interpreter.h"
+#include "./include/checker.h"
 
 /**
  * What is this CTF?
@@ -52,7 +52,7 @@ static uint8_t shifted_letter(uint32_t code);         // extract [16, 24)
 static uint8_t bits_in_encoded_morse(uint32_t code);  // extract [8, 16)
 static uint8_t encoded_morse(uint32_t code);          // extract [0, 8)
 
-static uint8_t compare_morse(uint32_t c1, uint32_t c2);
+static uint8_t compare_morse_codes(uint32_t c1, uint32_t c2);
 
 #if DEV_MODE
 static void generate_flag();
@@ -126,22 +126,28 @@ static uint32_t _flag[] =
 };
 
 
+static void
+read_user_flag(char **input_buf) {
+    size_t len = 0;
+    ssize_t read = 0;
+    if ((read = getline(input_buf, &len, stdin)) == -1) {
+        printf("Failed to read user input. Exiting...\n");
+        exit(1);
+    }
+    *((*input_buf) + read - 1) = '\0';
+}
+
+
 int
 main(int argc, char **argv) {
     printf("\nPlease enter a flag below!\n > ");
 
-    char *user_input = NULL;
-    size_t len = 0;
-    ssize_t read = 0;
-    if ((read = getline(&user_input, &len, stdin)) == -1) {
-        printf("Failed to read user input. Exiting...\n");
-        exit(1);
-    }
-    user_input[read - 1] = '\0';
-    
-    if (check_flag(user_input)) {
+    char *input_buf = NULL;
+    read_user_flag(&input_buf);
+
+    if (check_flag(input_buf)) {
         printf("Well done! You found the flag :) Please submit the following:\n");
-        printf("%s\n\n", user_input);
+        printf("%s\n\n", input_buf);
     } else {
         printf("Incorrect flag, please try again!\n");
     }
@@ -149,25 +155,33 @@ main(int argc, char **argv) {
 }
 
 
+
 /**
- * iterate each character, retrieve the uint32 that has the char embedded within it
+ * iterate each character, retrieve the uint32 that has the extpected char embedded within it
  * before decoding the morse portion and verifying it against the key.  
  */
 static bool
 check_flag(char *input) {
     uint32_t *flag = _flag;
+    time_t start_t;
     while (*input && *flag) {
-        uint32_t code = retrieve_code_by_letter(*input);
-        uint32_t flag_at = *flag;
-
+        start_t = time(NULL);
+        
         shift_key();
-        if (compare_morse(flag_at ^ _key, code))
+        VERIFY_TIME(start_t);
+
+        uint32_t recved_code = retrieve_code_by_letter(*input);
+        VERIFY_TIME(start_t);
+
+        uint32_t exped_code = *flag ^ _key;
+        if (compare_morse_codes(exped_code, recved_code))
             return false;
+        VERIFY_TIME(start_t);
         
         input++;
         flag++;
     }
-    if (*input != 0 || *flag != 0)
+    if (*input != '\0' || *flag != '\0')
         return false;
 
     return true;
@@ -200,7 +214,7 @@ shift_key() {
 }
 
 
-// functions to extract data from uint32_t
+// functions to extract data from encoded 32 bit int
 
 static uint8_t
 letter_shift_count(uint32_t code) {
@@ -228,26 +242,29 @@ encoded_morse(uint32_t code) {
 static void extract_morse_as_str(uint32_t code, char *buf);
 
 static uint8_t
-compare_morse(uint32_t c1, uint32_t c2) {
-    char c1_morse[6] = { '\0' };
-    char c2_morse[6] = { '\0' };
+compare_morse_codes(uint32_t c1, uint32_t c2) {
+    char c1_buf[6] = { '\0' };
+    char c2_buf[6] = { '\0' };
 
-    extract_morse_as_str(c1, c1_morse);
-    extract_morse_as_str(c2, c2_morse);
+    extract_morse_as_str(c1, c1_buf);
+    extract_morse_as_str(c2, c2_buf);
 
-    return strlen(c1_morse) == strlen(c2_morse) 
-            && strcmp(c1_morse, c2_morse) == 0;
+    return strlen(c1_buf) == strlen(c2_buf) 
+            && strcmp(c1_buf, c2_buf) == 0;
 }
 
 static void
 extract_morse_as_str(uint32_t code, char *buf) {
+    time_t start_t = time(NULL);
+
     int8_t num_bits = (int8_t)bits_in_encoded_morse(code);
     uint8_t morse = encoded_morse(code);
     for (int8_t i = num_bits - 1, j = 0; i >= 0; i--, j++) {
         if ((morse & (1 << i)) != 0)
             buf[j] = 45;    // '-'
         else
-            buf[j] = 46;   // '.'
+            buf[j] = 46;    // '.'
+        VERIFY_TIME(start_t);
     }
 }
 
@@ -275,7 +292,7 @@ static void
 output_morse(const char c) {
     uint32_t code = retrieve_code_by_letter(c);
     if (code == UINT32_MAX) {
-        printf("Unrecognised character '%c'!\nExiting...\n", c);
+        printf("Unrecognised character '%c'!\n", c);
         return;
     }
 
@@ -283,11 +300,10 @@ output_morse(const char c) {
     uint8_t morse = encoded_morse(code);
     printf("%c ==> ", c);
     for (int i = num_bits - 1; i >= 0; i--) {
-        if ((morse & (1 << i)) != 0) {
+        if ((morse & (1 << i)) != 0)
             printf("%c", '-');
-        } else {
+        else
             printf("%c", '.');
-        }
     }
     printf(",\n");
 }
