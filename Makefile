@@ -1,6 +1,6 @@
 CC = gcc
 
-CFLAGS = -g -Wall -pedantic 
+CFLAGS = -Wpedantic # -g 
 
 TARGET = challenge
 

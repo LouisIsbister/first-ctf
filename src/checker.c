@@ -12,33 +12,24 @@
 /**
  * What is this CTF?
  * 
- * For a while I have wanted to make something that uses morse in some manner, hence this CTF.
- * The overall idea was to create something that would store the flag in an obfuscated some morse
- * representation, and then validating the users provided flag converting it to morse and then 
- * deobfuscating the flag at runtime before comparing the two morse codes. Since morse is kinda
- * weird with the number of characters required to represent each letter may differ in length,
- * an example being that 'e' is simply '.' but 'y' is '-.--', as such some form of mapping is 
+ * For a while I have wanted to make something that uses morse in some manner, si thats the gist of this CTF.
+ * The overall idea was to create something that would store the flag in some obfuscated morse
+ * representation, and then validate the users provided flag by converting it to morse, 
+ * deobfuscating the flag at runtime, and comparing the two morse codes. Since morse is kinda
+ * weird, the number of characters required to represent each letter differs heaps,
+ * for example, 'e' is simply '.' but 'y' is '-.--', as such, some form of mapping is 
  * required to convert letter -> morse. However, making this mapping using plain text for the
- * morse and letters would be obvious asf, so I encoded each mapping into a 32 bit int!
+ * morse and letters would be obvious asf, so I encoded each mapping into a 32 bit int to obfuscate
+ * it a bit;
  * 
  * So, each 32 bit int encodes a mapping from english character -> morse character as follows
  *  - [0-8)   encodes the morse representation of the character itself. A 0 denotes a dot, and 1 a dash.
- *  - [8-16)  denotes the number of morse symbols (dots & dashes) needed a character (since they vary between 1 and 5 symbols)
+ *  - [8-16)  denotes the number of symbols (dots and dashes) needed by a character
  *  - [16-24) encodes the english letter, in memory it is shifted right for more obfuscation :) , details below
  *  - [24-32) specifies how many times the letter stored in [16-24) is shifted in memory so it can't be seen conveniently
- *               in ghidra or any hex viewer
+ *               in ghidra or any other sophisticated decompiler / hex viewer
  *
- * Example for character 'f' (with a shift count of 2):
- *  - The morse symbol for 'f' is ..-.
- *  - The [0-8) encodes the morse symbol as follows:
- *     1 << 1 = [0000]0010
- *  - Since there are 4 characters in the morse symbol, [8-16) encoded as:
- *     4 = 00000100
- *  - Lastly, the upper 16 encodes 'f' and how many times it gets shifted. If it gets shifted twice then:
- *     [24-32) = 00000010
- *     [16-24) = 01100110 => 00110011 => 10011001
- * 
- * The flag is:
+ * The flag for testing:
  * the0world0says0hii
  */ 
 
@@ -52,7 +43,7 @@ static uint8_t shifted_letter(uint32_t code);         // extract [16, 24)
 static uint8_t bits_in_encoded_morse(uint32_t code);  // extract [8, 16)
 static uint8_t encoded_morse(uint32_t code);          // extract [0, 8)
 
-static uint8_t compare_morse_codes(uint32_t c1, uint32_t c2);
+static bool compare_morse_codes(uint32_t c1, uint32_t c2);
 
 #if DEV_MODE
 static void generate_flag();
@@ -104,24 +95,24 @@ static uint32_t _key = 0xb1e1e1f1;
 
 static uint32_t _flag[] =
 {
-    3639668985,
-    1819834493,
-    909917247,
-    454958622,
-    2374962958,
-    3334965126,
-    3814966210,
-    4054966752,
-    4174967025,
-    2087483513,
-    1043741757,
-    521870879,
-    260935438,
-    2277951366,
-    3286459330,
-    3790713312,
-    4042840305,
-    2021420153,
+    3703042553,
+    1833729148,
+    879050046,
+    436607744,
+    2285112332,
+    3307897984,
+    3834101953,
+    4064077285,
+    4266259444,
+    2104786279,
+    969948988,
+    514530335,
+    157846276,
+    2149631111,
+    3271255772,
+    3771053537,
+    4100905712,
+    2095738488,
     0
 };
 
@@ -140,10 +131,13 @@ read_user_flag(char **input_buf) {
 
 int
 main(int argc, char **argv) {
+    // generate_flag();
     printf("\nPlease enter a flag below!\n > ");
 
     char *input_buf = NULL;
     read_user_flag(&input_buf);
+
+    // printf("'%s'", input_buf);
 
     if (check_flag(input_buf)) {
         printf("Well done! You found the flag :) Please submit the following:\n");
@@ -174,8 +168,9 @@ check_flag(char *input) {
         VERIFY_TIME(start_t);
 
         uint32_t exped_code = *flag ^ _key;
-        if (compare_morse_codes(exped_code, recved_code))
+        if (!compare_morse_codes(exped_code, recved_code))
             return false;
+
         VERIFY_TIME(start_t);
         
         input++;
@@ -241,7 +236,7 @@ encoded_morse(uint32_t code) {
 
 static void extract_morse_as_str(uint32_t code, char *buf);
 
-static uint8_t
+static bool
 compare_morse_codes(uint32_t c1, uint32_t c2) {
     char c1_buf[6] = { '\0' };
     char c2_buf[6] = { '\0' };
@@ -275,14 +270,12 @@ extract_morse_as_str(uint32_t code, char *buf) {
 
 static void
 generate_flag() {
-    const char *flag = "the0world0says0hii";
-    char ch;
-    for (int i = 0; i < 18; ch = flag[i], i++) {
+    char *flag = "the0world0says0hii";
+    for (int i = 0; i < 18; i++, flag++) {
         shift_key();
 
-        uint32_t code = retrieve_code_by_letter(ch);
-        uint16_t morse_information = code && 0xffff;
-        uint32_t flag_value = morse_information ^ _key;
+        uint32_t code = retrieve_code_by_letter(*flag);
+        uint32_t flag_value = code ^ _key;
 
         printf("%u,\n", flag_value);
     }
